@@ -1,7 +1,10 @@
+[English](docs/README.md) | **简体中文** | [Tiếng Việt](docs/README.vi.md) | [हिन्दी](docs/README.hi.md) | [Português (BR)](docs/README.pt-BR.md) | [Español](docs/README.es.md)
+
+---
+
 # LowFace - 轻量级人脸识别 Demo
 
 > 一款专为**低端 Android 设备**设计的人脸识别应用，使用原生 XML/View 实现，验证在资源受限设备上的可行性。
-
 
 ## lowFace 释义
 * LowFace: Efficient Face Recognition on Low-End Devices
