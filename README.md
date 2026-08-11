@@ -1,0 +1,248 @@
+# LowFace - 轻量级人脸识别 Demo
+
+> 一款专为**低端 Android 设备**设计的人脸识别应用，使用原生 XML/View 实现，验证在资源受限设备上的可行性。
+
+
+## lowFace 释义
+* LowFace: Efficient Face Recognition on Low-End Devices
+## 项目来源
+
+本项目基于 [Simprints Face Biometrics SDK](https://github.com/Simprints/Biometrics-SimFace) 开发，保留了核心人脸识别能力，但完全重写了 UI 层：
+
+- **原项目**: 使用 Jetpack Compose 构建现代 UI
+- **本项目**: 使用原生 XML/View 构建，专为低端设备优化
+
+## 功能特性
+
+- 工号/姓名输入
+- 人脸录入（质量达标自动抓取）
+- 人脸识别（1:N 比对）
+- 实时人脸框显示
+- 质量分数提示
+
+## 核心参数
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 质量阈值 | 0.4 | 人脸质量判断阈值 |
+| 匹配阈值 | 0.85 | 1:N 比对匹配阈值 |
+| 特征维度 | 512 | EdgeFace 输出的特征向量维度 |
+
+## 技术栈
+
+- **UI**: 原生 XML/View（不使用 Compose）
+- **相机**: CameraX + PreviewView
+- **人脸检测**: Google ML Kit（通过 SimFace SDK）
+- **特征提取**: EdgeFace TFLite 模型
+- **开发语言**: Java + Kotlin（仅 SDK 层）
+
+## 项目结构
+
+```
+lowFace/
+├── app/                         # 主应用模块
+│   └── src/main/java/com/jiaqi/face/
+│       ├── FaceDemoActivity.java       # 主页面
+│       ├── FaceCameraActivity.java     # 相机页面
+│       ├── FaceEngineManager.java      # 人脸核心调用
+│       ├── FaceEngineSingleton.java    # 单例管理
+│       ├── FaceStore.java              # 内存存储
+│       ├── FaceRecord.java             # 数据模型
+│       ├── OverlayView.java            # 人脸框覆盖层
+│       └── utils/SimFaceWrapper.kt     # Kotlin 包装类
+├── simface/                     # 核心人脸识别 SDK
+└── simq/                        # 人脸质量评估库
+```
+
+## 编译与运行
+
+### 环境要求
+
+- JDK 17+
+- Android SDK 33+
+- Gradle 9.6.1+
+
+### 编译命令
+
+```powershell
+
+# 进入项目目录
+cd lowFace
+
+# 编译验证
+.\gradlew.bat compileDebugJavaWithJavac
+
+# 生成 Debug APK
+.\gradlew.bat assembleDebug
+```
+
+### 安装测试
+
+```powershell
+# 安装到设备
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+
+# 查看关键日志
+adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
+```
+
+---
+
+## 低端设备适配（重点）
+
+### 目标设备配置
+
+本项目专为以下配置的低端设备优化：
+
+| 项目 | 规格 |
+|------|------|
+| CPU | MediaTek MT6762 (4核 2.0GHz) |
+| RAM | 2GB |
+| 存储 | 32GB |
+| 系统版本 | Android 10-11 |
+
+### 为什么不用 Compose？
+
+在低端设备上，Jetpack Compose 存在以下问题：
+
+1. **首次加载慢**: Compose 运行时初始化 + 首次重组需要 200-500ms
+2. **内存占用高**: Compose 基础库约 2-3MB，对 2GB RAM 设备是负担
+3. **输入延迟**: 复杂重组会导致输入框卡顿
+4. **冷启动长**: 从点击图标到可交互时间更长
+
+本项目选择**原生 XML/View**：
+
+- 零额外依赖开销
+- 系统级渲染优化
+- 输入响应更直接
+- 内存占用更低
+
+### 性能优化措施
+
+#### 1. 图像处理优化
+
+| 优化项 | 方案 | 效果 |
+|--------|------|------|
+| Bitmap 转换 | RGBA_8888 直接转换，跳过 YUV→JPEG→解码 | 节省 ~20ms |
+| ImageProxy 释放 | Bitmap 转换后立即 close()，不等待检测完成 | 避免阻塞相机管线 |
+| 图像缩放 | 分析图限制在 480×640 | resizeBitmap 耗时 0ms |
+
+#### 2. 检测节流
+
+- 检测间隔 **800ms**
+- 使用 `AtomicBoolean` 防止并发检测
+- 非检测帧立即关闭，不占用 CPU
+
+#### 3. 结果复用
+
+自动抓取时复用预览帧的检测结果，避免二次检测：
+
+```
+优化前: 预览检测 → 自动抓取 → 二次检测(400ms) → 特征提取
+优化后: 预览检测 → 自动抓取 → 直接特征提取
+```
+
+节省 **400-500ms**。
+
+### 真机性能数据
+
+#### 冷启动（首次运行）
+
+| 阶段 | 耗时 |
+|------|------|
+| setContentView | 217-248ms |
+| 相机初始化 | 267-278ms |
+| bindToLifecycle | 278ms |
+| 首帧到达 | 距 onCreate 1200-1400ms |
+| 首次人脸检测 | 1000-1100ms |
+| 首次特征提取 | 900-950ms |
+
+#### 稳定运行（热启动后）
+
+| 阶段 | 耗时 |
+|------|------|
+| 人脸检测 | 400-530ms |
+| 人脸对齐 | 100-130ms |
+| 特征提取 | 90-100ms |
+| 1:N 比对(10人) | 10-15ms |
+| 自动抓取后处理 | ~230ms |
+
+---
+
+## 当前弊端与局限
+
+### 1. 检测速度受限
+
+- **原因**: ML Kit 人脸检测在低端 CPU 上耗时 400-500ms/帧
+- **影响**: 无法实现流畅的实时逐帧检测
+- **现状**: 采用 800ms 节流 + 自动抓取方案
+
+### 2. 冷启动慢
+
+- **原因**: 模型加载、OpenCV 初始化、CPU 升频
+- **影响**: 首次录入/识别响应慢
+- **现状**: 暂无完美解决方案，建议预热
+
+### 3. 内存存储
+
+- **现状**: 已录入数据仅保存在内存中
+- **影响**: App 重启后需重新录入
+- **计划**: 后续版本支持持久化存储
+
+### 4. 无活体检测
+
+- **现状**: 仅依赖照片进行识别
+- **风险**: 可能被照片欺骗
+- **计划**: 需要额外集成活体检测方案
+
+### 5. 单摄像头支持
+
+- **现状**: 仅支持前置摄像头
+- **影响**: 某些场景可能不便
+- **计划**: 后续支持摄像头切换
+
+### 6. 输入体验待验证
+
+- **现状**: 主页面输入框在 SDK 初始化后是否流畅尚未充分验证
+- **风险**: 低端设备上可能存在输入延迟
+- **建议**: 需要进一步测试"获得焦点 → 首字符输入"耗时
+
+---
+
+## 与原 Compose 版本对比
+
+| 项目 | 原版 (Compose) | 本项目 (XML/View) |
+|------|----------------|-------------------|
+| UI 框架 | Jetpack Compose | 原生 XML/View |
+| 首屏加载 | 较慢 | 较快 |
+| 内存占用 | 较高 | 较低 |
+| 输入响应 | 可能卡顿 | 更流畅 |
+| 开发效率 | 高 | 中等 |
+| 维护成本 | 低 | 中等 |
+
+---
+
+## 后续优化方向
+
+1. **持久化存储**: 使用 SQLite 或 SharedPreferences 保存已录入人脸
+2. **活体检测**: 集成眨眼、张嘴等活体检测能力
+3. **相机预热**: 在主页面后台预热相机和模型
+4. **后置摄像头**: 支持前后摄像头切换
+5. **批量录入**: 支持一次录入多人
+6. **NPU 加速**: 如果设备支持，利用 NPU 加速推理
+
+---
+
+## 许可证
+
+本项目核心 SDK (`simface`, `simq`) 遵循原项目许可证。
+
+应用层代码采用 MIT 许可证，可自由使用和修改。
+
+---
+
+## 致谢
+
+- [Simprints](https://simprints.com/) - 提供开源人脸识别 SDK
+- [Google ML Kit](https://developers.google.com/ml-kit) - 人脸检测能力
+- [EdgeFace](https://github.com/SeetaFace6Open/SeetaFace6Open) - 特征提取模型

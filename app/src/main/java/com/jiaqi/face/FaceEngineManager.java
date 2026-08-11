@@ -22,7 +22,7 @@ public class FaceEngineManager {
     // 质量阈值（与原 Demo 保持一致）
     public static final float QUALITY_THRESHOLD = 0.4f;
     // 匹配阈值（与原 Demo 保持一致）
-    public static final double MATCH_THRESHOLD = 0.6;
+    public static final double MATCH_THRESHOLD = 0.85;
 
     private SimFaceWrapper simFaceWrapper;
     private boolean initialized = false;
@@ -122,9 +122,9 @@ public class FaceEngineManager {
             long alignCost = endTime - alignStartTime;
             Log.d(TAG, "[对齐] alignedFaceImage 耗时: " + alignCost + "ms");
 
-            // 提取特征
+            // 提取特征（传入已对齐的 Bitmap）
             long embedStartTime = System.currentTimeMillis();
-            byte[] embedding = simFaceWrapper.getEmbedding(face, sourceBitmap);
+            byte[] embedding = simFaceWrapper.getEmbedding(alignedFace);
             endTime = System.currentTimeMillis();
             long embedCost = endTime - embedStartTime;
 
@@ -169,6 +169,34 @@ public class FaceEngineManager {
     }
 
     /**
+     * 录入人脸（复用已检测的人脸结果）
+     * 用于自动抓取场景，避免重复检测
+     * 必须在后台线程调用
+     */
+    public FaceEnrollResult enrollFromDetectedFace(Bitmap bitmap, FaceDetection face, String userId, String userName) {
+        long startTime = System.currentTimeMillis();
+        Log.i(TAG, "[录入] 开始（复用检测结果），userId=" + userId + ", userName=" + userName);
+
+        float quality = simFaceWrapper.getFaceQuality(face);
+        Log.i(TAG, "[录入] 人脸质量: " + quality);
+
+        // 提取特征（跳过 detectFaces）
+        byte[] embedding = getEmbedding(face, bitmap);
+        if (embedding == null) {
+            return FaceEnrollResult.failure("特征提取失败");
+        }
+
+        // 保存到内存存储
+        FaceRecord record = new FaceRecord(userId, userName, embedding, quality);
+        FaceStore.add(record);
+
+        long endTime = System.currentTimeMillis();
+        Log.i(TAG, "[录入] 成功（复用检测结果），总耗时: " + (endTime - startTime) + "ms");
+
+        return FaceEnrollResult.success("录入成功: " + userName, quality);
+    }
+
+    /**
      * 录入人脸
      * 必须在后台线程调用
      */
@@ -209,6 +237,55 @@ public class FaceEngineManager {
         Log.i(TAG, "[录入] 成功，总耗时: " + (endTime - startTime) + "ms");
 
         return FaceEnrollResult.success("录入成功: " + userName, quality);
+    }
+
+    /**
+     * 识别人脸（复用已检测的人脸结果）
+     * 用于自动抓取场景，避免重复检测
+     * 必须在后台线程调用
+     */
+    public FaceRecognitionResult recognizeFromDetectedFace(Bitmap bitmap, FaceDetection face) {
+        long startTime = System.currentTimeMillis();
+        Log.i(TAG, "[识别] 开始（复用检测结果），已录入人数: " + FaceStore.count());
+
+        if (FaceStore.count() == 0) {
+            return FaceRecognitionResult.failure("请先录入人脸");
+        }
+
+        float quality = simFaceWrapper.getFaceQuality(face);
+
+        // 提取特征（跳过 detectFaces）
+        byte[] probeEmbedding = getEmbedding(face, bitmap);
+        if (probeEmbedding == null) {
+            return FaceRecognitionResult.failure("特征提取失败");
+        }
+
+        // 1:N 比对
+        List<byte[]> allEmbeddings = FaceStore.getAllEmbeddings();
+        List<IndexScore> scores = identificationScore(probeEmbedding, allEmbeddings);
+
+        // 找最高分
+        IndexScore bestMatch = null;
+        for (IndexScore score : scores) {
+            if (bestMatch == null || score.score > bestMatch.score) {
+                bestMatch = score;
+            }
+        }
+
+        long endTime = System.currentTimeMillis();
+        Log.i(TAG, "[识别] 总耗时（复用检测结果）: " + (endTime - startTime) + "ms");
+
+        if (bestMatch != null && bestMatch.score >= MATCH_THRESHOLD) {
+            FaceRecord record = FaceStore.get(bestMatch.index);
+            if (record != null) {
+                Log.i(TAG, "[识别] 匹配成功: " + record.userName + ", score=" + bestMatch.score);
+                return FaceRecognitionResult.matched(record.userId, record.userName, bestMatch.score);
+            }
+        }
+
+        double bestScore = bestMatch != null ? bestMatch.score : 0;
+        Log.i(TAG, "[识别] 未找到匹配，最高分数: " + bestScore);
+        return FaceRecognitionResult.notMatched(bestScore);
     }
 
     /**

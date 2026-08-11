@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 相机页面 - 实时人脸检测，质量达标自动抓取
@@ -73,6 +74,11 @@ public class FaceCameraActivity extends AppCompatActivity {
 
     // 是否已处理
     private boolean hasProcessed = false;
+
+    // 检测节流
+    private final AtomicBoolean isDetecting = new AtomicBoolean(false);
+    private long lastDetectStartTime = 0L;
+    private static final long DETECT_INTERVAL = 800L; // ms
 
     // 帧计数器
     private int frameCount = 0;
@@ -218,24 +224,28 @@ public class FaceCameraActivity extends AppCompatActivity {
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         Log.i(TAG, "[性能] setSurfaceProvider 耗时: " + (System.currentTimeMillis() - surfaceProviderTime) + "ms");
 
-        // 图像分析 - 实时检测人脸
+        // 图像分析 - 实时检测人脸（使用 RGBA_8888 格式，避免 JPEG 往返）
         long analysisCreateTime = System.currentTimeMillis();
         ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .build();
-        Log.i(TAG, "[性能] ImageAnalysis.Builder 耗时: " + (System.currentTimeMillis() - analysisCreateTime) + "ms");
+        Log.i(TAG, "[性能] ImageAnalysis.Builder 耗时: " + (System.currentTimeMillis() - analysisCreateTime) + "ms (RGBA_8888)");
 
         imageAnalysis.setAnalyzer(cameraExecutor, new ImageAnalysis.Analyzer() {
             @Override
             public void analyze(@NonNull ImageProxy imageProxy) {
+                long frameEnterTime = System.currentTimeMillis();
+                String threadName = Thread.currentThread().getName();
+
                 // 记录第一帧时间
                 if (!firstFrameLogged) {
                     firstFrameTime = System.currentTimeMillis();
                     firstFrameLogged = true;
                     Log.i(TAG, "[性能] ★★★ 第一帧到达 ★★★ 距onCreate: " + (firstFrameTime - activityCreateTime) + "ms");
                     Log.i(TAG, "[性能] 第一帧图像尺寸: " + imageProxy.getWidth() + "x" + imageProxy.getHeight() +
-                        ", rotation: " + imageProxy.getImageInfo().getRotationDegrees());
+                        ", rotation: " + imageProxy.getImageInfo().getRotationDegrees() +
+                        ", format: RGBA_8888");
                 }
 
                 if (hasProcessed) {
@@ -243,65 +253,83 @@ public class FaceCameraActivity extends AppCompatActivity {
                     return;
                 }
 
+                // 检测节流：检查时间间隔 + 并发锁
+                long now = System.currentTimeMillis();
+                if (now - lastDetectStartTime < DETECT_INTERVAL) {
+                    // 时间间隔不足，跳过此帧
+                    imageProxy.close();
+                    return;
+                }
+
+                // 尝试获取检测锁，如果已有检测在运行则跳过
+                if (!isDetecting.compareAndSet(false, true)) {
+                    imageProxy.close();
+                    return;
+                }
+
+                // 记录队列等待时间（从帧进入 Analyzer 到开始处理的时间）
+                long queueWaitTime = now - frameEnterTime;
+                lastDetectStartTime = now;
+                frameCount++;
+
+                Log.d(TAG, "[帧] 第" + frameCount + "帧 开始处理, thread=" + threadName +
+                    ", 队列等待=" + queueWaitTime + "ms");
+
+                long frameStartTime = System.currentTimeMillis();
+
                 try {
-                    frameCount++;
-
-                    // 每30帧打印一次日志
-                    if (frameCount % 30 == 0) {
-                        Log.d(TAG, "[帧] 第" + frameCount + "帧");
-                    }
-
-                    long frameStartTime = System.currentTimeMillis();
-
-                    // 转换为 Bitmap
+                    // 转换为 Bitmap（使用 RGBA_8888 直接转换）
                     long bitmapStartTime = System.currentTimeMillis();
-                    Bitmap bitmap = imageProxyToBitmap(imageProxy);
+                    Bitmap bitmap = rgbaImageProxyToBitmap(imageProxy);
                     long bitmapEndTime = System.currentTimeMillis();
+                    long bitmapCost = bitmapEndTime - bitmapStartTime;
 
-                    if (frameCount <= 5) {
-                        Log.i(TAG, "[性能] 第" + frameCount + "帧 Bitmap转换耗时: " + (bitmapEndTime - bitmapStartTime) + "ms");
-                    }
+                    // ★ 立即关闭 ImageProxy，释放 CameraX 缓冲区
+                    long closeStartTime = System.currentTimeMillis();
+                    imageProxy.close();
+                    long closeTime = System.currentTimeMillis() - closeStartTime;
+                    Log.d(TAG, "[帧] ImageProxy.close() 耗时: " + closeTime + "ms");
 
                     if (bitmap == null) {
-                        imageProxy.close();
+                        Log.w(TAG, "[帧] Bitmap 转换失败");
+                        isDetecting.set(false);
                         return;
                     }
+
+                    Log.i(TAG, "[帧] 第" + frameCount + "帧 Bitmap转换耗时: " + bitmapCost + "ms (RGBA_8888直转)");
 
                     // 缩放
                     long resizeStartTime = System.currentTimeMillis();
                     final Bitmap resizedBitmap = resizeBitmap(bitmap);
-                    long resizeEndTime = System.currentTimeMillis();
+                    long resizeCost = System.currentTimeMillis() - resizeStartTime;
 
-                    if (frameCount <= 5) {
-                        Log.i(TAG, "[性能] 第" + frameCount + "帧 resizeBitmap耗时: " + (resizeEndTime - resizeStartTime) + "ms" +
-                            ", 尺寸: " + resizedBitmap.getWidth() + "x" + resizedBitmap.getHeight());
-                    }
+                    Log.d(TAG, "[帧] resizeBitmap耗时: " + resizeCost + "ms" +
+                        ", 尺寸: " + resizedBitmap.getWidth() + "x" + resizedBitmap.getHeight());
 
-                    // 检测人脸
+                    // 检测人脸（在后台线程执行）
                     long detectStartTime = System.currentTimeMillis();
                     List<FaceDetection> faces = engineManager.detectFaces(resizedBitmap);
                     long detectEndTime = System.currentTimeMillis();
+                    long detectCost = detectEndTime - detectStartTime;
 
-                    if (frameCount <= 5) {
-                        Log.i(TAG, "[性能] 第" + frameCount + "帧 detectFaces耗时: " + (detectEndTime - detectStartTime) + "ms" +
-                            ", 检测到 " + faces.size() + " 张人脸");
-                    }
+                    Log.i(TAG, "[帧] 第" + frameCount + "帧 detectFaces耗时: " + detectCost + "ms" +
+                        ", 检测到 " + faces.size() + " 张人脸");
 
                     long frameEndTime = System.currentTimeMillis();
-                    if (frameCount <= 5) {
-                        Log.i(TAG, "[性能] 第" + frameCount + "帧 总处理耗时: " + (frameEndTime - frameStartTime) + "ms");
-                    }
+                    Log.i(TAG, "[帧] 第" + frameCount + "帧 总处理耗时: " + (frameEndTime - frameStartTime) + "ms");
 
                     if (!faces.isEmpty()) {
                         final FaceDetection face = faces.get(0);
                         final float quality = engineManager.getFaceQuality(face);
 
-                        // 更新 UI
-                        long uiStartTime = System.currentTimeMillis();
+                        // 更新 UI（人脸框、质量提示）
                         runOnUiThread(() -> {
+                            // 使用原始坐标（不镜像），OverlayView 内部处理前置摄像头镜像
+                            // mirror=true 表示前置摄像头，OverlayView 会对坐标进行镜像处理
                             overlayView.setFaceRect(face.getAbsoluteBoundingBox(), quality,
                                 previewView.getWidth(), previewView.getHeight(),
-                                resizedBitmap.getWidth(), resizedBitmap.getHeight());
+                                resizedBitmap.getWidth(), resizedBitmap.getHeight(), true);
+
                             tvQuality.setText("质量: " + String.format("%.2f", quality));
 
                             if (quality >= FaceEngineManager.QUALITY_THRESHOLD) {
@@ -313,11 +341,11 @@ public class FaceCameraActivity extends AppCompatActivity {
                             }
                         });
 
-                        // 质量达标时自动处理
+                        // 质量达标时自动处理（传入已检测的 FaceDetection，复用检测结果）
                         if (quality >= FaceEngineManager.QUALITY_THRESHOLD && !hasProcessed) {
                             hasProcessed = true;
-                            Log.i(TAG, "[性能] 自动抓取! quality=" + quality + ", 第" + frameCount + "帧");
-                            processImage(resizedBitmap);
+                            Log.i(TAG, "[自动抓取] quality=" + quality + ", 第" + frameCount + "帧，复用检测结果");
+                            processImageWithDetectedFace(resizedBitmap, face);
                         }
                     } else {
                         runOnUiThread(() -> {
@@ -331,7 +359,8 @@ public class FaceCameraActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Log.e(TAG, "[分析] 异常", e);
                 } finally {
-                    imageProxy.close();
+                    // 释放检测锁
+                    isDetecting.set(false);
                 }
             }
         });
@@ -356,7 +385,40 @@ public class FaceCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * 处理抓取的图像
+     * 处理抓取的图像（复用已检测的人脸结果）
+     * 避免重复调用 detectFaces，节省约 400-500ms
+     */
+    private void processImageWithDetectedFace(Bitmap bitmap, FaceDetection face) {
+        runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
+
+        engineManager.getExecutor().execute(() -> {
+            long startTime = System.currentTimeMillis();
+            String threadName = Thread.currentThread().getName();
+
+            if (currentMode == MODE_ENROLL) {
+                FaceEnrollResult result = engineManager.enrollFromDetectedFace(bitmap, face, workId, userName);
+                long endTime = System.currentTimeMillis();
+                Log.i(TAG, "[性能] enrollFromDetectedFace 总耗时: " + (endTime - startTime) + "ms, thread=" + threadName);
+
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    returnResult(result.success, result.message);
+                });
+            } else {
+                FaceRecognitionResult result = engineManager.recognizeFromDetectedFace(bitmap, face);
+                long endTime = System.currentTimeMillis();
+                Log.i(TAG, "[性能] recognizeFromDetectedFace 总耗时: " + (endTime - startTime) + "ms, thread=" + threadName);
+
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    returnResult(result.matched, result.message);
+                });
+            }
+        });
+    }
+
+    /**
+     * 处理抓取的图像（旧方法，保留兼容）
      */
     private void processImage(Bitmap bitmap) {
         runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
@@ -387,7 +449,85 @@ public class FaceCameraActivity extends AppCompatActivity {
     }
 
     /**
-     * ImageProxy 转 Bitmap
+     * ImageProxy 转 Bitmap（RGBA_8888 格式直接转换）
+     * 避免 YUV→NV21→JPEG→Bitmap 的往返转换
+     * 不做镜像处理，使用原始图像做人脸检测
+     */
+    private Bitmap rgbaImageProxyToBitmap(ImageProxy imageProxy) {
+        try {
+            long startTime = System.currentTimeMillis();
+            String threadName = Thread.currentThread().getName();
+
+            // RGBA_8888 格式只有 planes[0] 有效
+            ImageProxy.PlaneProxy plane = imageProxy.getPlanes()[0];
+            ByteBuffer buffer = plane.getBuffer();
+
+            int width = imageProxy.getWidth();
+            int height = imageProxy.getHeight();
+            int rowStride = plane.getRowStride();
+            int pixelStride = plane.getPixelStride();
+
+            // 创建 Bitmap
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+            // 复制像素数据（处理 rowStride 和 pixelStride）
+            if (rowStride == width * 4 && pixelStride == 4) {
+                // 最佳情况：连续内存，直接复制
+                buffer.rewind();
+                bitmap.copyPixelsFromBuffer(buffer);
+            } else {
+                // 需要逐行复制
+                int[] pixels = new int[width * height];
+                buffer.rewind();
+
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int index = y * rowStride + x * pixelStride;
+                        int r = buffer.get(index) & 0xFF;
+                        int g = buffer.get(index + 1) & 0xFF;
+                        int b = buffer.get(index + 2) & 0xFF;
+                        int a = buffer.get(index + 3) & 0xFF;
+                        pixels[y * width + x] = (a << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+                bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+            }
+
+            long copyTime = System.currentTimeMillis();
+            Log.d(TAG, "[Bitmap] RGBA像素复制耗时: " + (copyTime - startTime) + "ms, thread=" + threadName);
+
+            // 旋转（根据相机传感器方向）
+            int rotation = imageProxy.getImageInfo().getRotationDegrees();
+            if (rotation != 0 && bitmap != null) {
+                long rotateStartTime = System.currentTimeMillis();
+                Matrix matrix = new Matrix();
+                matrix.postRotate(rotation);
+                Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
+                    bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                if (rotatedBitmap != bitmap) {
+                    bitmap.recycle();
+                }
+                bitmap = rotatedBitmap;
+                Log.d(TAG, "[Bitmap] 旋转耗时: " + (System.currentTimeMillis() - rotateStartTime) + "ms, rotation=" + rotation);
+            }
+
+            // 不做镜像处理！人脸检测使用原始图像
+            // 前置摄像头预览由 PreviewView 自己处理镜像显示
+            // OverlayView 内部处理坐标镜像
+
+            long totalTime = System.currentTimeMillis() - startTime;
+            Log.i(TAG, "[Bitmap] rgbaImageProxyToBitmap 总耗时: " + totalTime + "ms (无镜像)");
+
+            return bitmap;
+        } catch (Exception e) {
+            Log.e(TAG, "[Bitmap转换] 失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * ImageProxy 转 Bitmap（旧方法：YUV→NV21→JPEG→Bitmap）
+     * 保留作为参考，当前已改用 rgbaImageProxyToBitmap
      */
     private Bitmap imageProxyToBitmap(ImageProxy imageProxy) {
         try {

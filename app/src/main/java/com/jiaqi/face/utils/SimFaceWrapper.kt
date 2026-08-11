@@ -71,19 +71,15 @@ class SimFaceWrapper(private val context: Context) {
     fun getFaceQuality(face: FaceDetection): Float = face.quality
 
     /**
-     * 对齐人脸并提取特征
+     * 提取特征向量（接收已对齐的人脸 Bitmap）
+     * 调用方负责先调用 face.alignedFaceImage() 获取对齐后的图像
      */
-    fun getEmbedding(face: FaceDetection, sourceBitmap: Bitmap): ByteArray? {
+    fun getEmbedding(alignedFace: Bitmap): ByteArray? {
         val sf = simFace ?: throw IllegalStateException("SimFace not initialized")
         return try {
-            val alignStartTime = System.currentTimeMillis()
-            val alignedFace = face.alignedFaceImage(sourceBitmap)
-            Log.d(TAG, "[getEmbedding] alignedFaceImage 耗时: ${System.currentTimeMillis() - alignStartTime}ms")
-
             val embedStartTime = System.currentTimeMillis()
             val embedding = sf.getEmbedding(alignedFace)
             Log.d(TAG, "[getEmbedding] getEmbedding 耗时: ${System.currentTimeMillis() - embedStartTime}ms")
-
             embedding
         } catch (e: Exception) {
             Log.e(TAG, "[getEmbedding] 失败", e)

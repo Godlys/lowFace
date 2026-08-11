@@ -10,6 +10,7 @@ import android.view.View;
 
 /**
  * 覆盖层视图 - 绘制人脸框
+ * 支持前置摄像头镜像处理
  */
 public class OverlayView extends View {
     private Rect faceRect;
@@ -18,6 +19,7 @@ public class OverlayView extends View {
     private int previewHeight;
     private int imageWidth;
     private int imageHeight;
+    private boolean needMirror = false;  // 是否需要镜像坐标（前置摄像头）
     private Paint paint;
     private Paint textPaint;
 
@@ -50,16 +52,32 @@ public class OverlayView extends View {
 
     /**
      * 设置人脸矩形和质量
+     * @param rect 人脸矩形（基于原始图像坐标）
+     * @param quality 人脸质量
+     * @param previewWidth 预览视图宽度
+     * @param previewHeight 预览视图高度
+     * @param imageWidth 原始图像宽度
+     * @param imageHeight 原始图像高度
+     * @param mirror 是否需要镜像坐标（前置摄像头为 true）
      */
     public void setFaceRect(Rect rect, float quality, int previewWidth, int previewHeight,
-                            int imageWidth, int imageHeight) {
+                            int imageWidth, int imageHeight, boolean mirror) {
         this.faceRect = rect;
         this.quality = quality;
         this.previewWidth = previewWidth;
         this.previewHeight = previewHeight;
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
+        this.needMirror = mirror;
         invalidate();
+    }
+
+    /**
+     * 兼容旧接口（默认镜像）
+     */
+    public void setFaceRect(Rect rect, float quality, int previewWidth, int previewHeight,
+                            int imageWidth, int imageHeight) {
+        setFaceRect(rect, quality, previewWidth, previewHeight, imageWidth, imageHeight, true);
     }
 
     /**
@@ -95,11 +113,23 @@ public class OverlayView extends View {
         paint.setColor(color);
         textPaint.setColor(color);
 
-        // 绘制人脸框
-        float left = faceRect.left * scaleX;
-        float top = faceRect.top * scaleY;
-        float right = faceRect.right * scaleX;
-        float bottom = faceRect.bottom * scaleY;
+        // 计算人脸框坐标（考虑缩放和镜像）
+        float left, top, right, bottom;
+
+        if (needMirror) {
+            // 前置摄像头：PreviewView 显示的是镜像后的预览
+            // 人脸检测坐标基于原始图像，需要镜像到预览坐标系
+            // newLeft = previewWidth - oldRight, newRight = previewWidth - oldLeft
+            left = previewWidth - faceRect.right * scaleX;
+            right = previewWidth - faceRect.left * scaleX;
+        } else {
+            // 后置摄像头：直接缩放
+            left = faceRect.left * scaleX;
+            right = faceRect.right * scaleX;
+        }
+
+        top = faceRect.top * scaleY;
+        bottom = faceRect.bottom * scaleY;
 
         canvas.drawRect(left, top, right, bottom, paint);
 
