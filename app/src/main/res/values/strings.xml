@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">人脸识别Demo</string>
+    <string name="title">人脸识别 Demo</string>
+    <string name="sdk_status">SDK状态：%1$s</string>
+    <string name="enrolled_count">已录入人数：%1$d</string>
+    <string name="work_id_hint">请输入工号</string>
+    <string name="name_hint">请输入姓名</string>
+    <string name="enroll_button">录入人脸</string>
+    <string name="recognize_button">识别人脸</string>
+    <string name="clear_button">清空数据</string>
+    <string name="result_label">结果：</string>
+    <string name="status_waiting">等待操作...</string>
+    <string name="status_initializing">正在初始化SDK...</string>
+    <string name="status_initialized">SDK已就绪</string>
+    <string name="status_processing">正在处理...</string>
+</resources>
