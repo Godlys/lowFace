@@ -9,7 +9,7 @@ on:
       - 'docs/**'
       - '.gitignore'
       - 'LICENSE'
-      - '.github/workflows/**'
+  workflow_dispatch:  # 支持手动触发
 
 jobs:
   build:
