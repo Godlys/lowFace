@@ -1,16 +1,19 @@
-package com.jiaqi.face;
+package com.low.face;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 全局内存存储 - 重启App后清空
+ * 最大容量限制防止内存溢出
  */
 public class FaceStore {
+    private static final int MAX_RECORDS = 100; // 最大记录数
     private static final List<FaceRecord> records = new ArrayList<>();
 
     /**
      * 添加人脸记录（同一工号会覆盖）
+     * 超过最大容量时移除最旧的记录
      */
     public static synchronized void add(FaceRecord record) {
         // 移除同工号的旧记录
@@ -19,6 +22,12 @@ public class FaceStore {
                 records.remove(i);
             }
         }
+
+        // 检查容量限制
+        while (records.size() >= MAX_RECORDS) {
+            records.remove(0); // 移除最旧的记录
+        }
+
         records.add(record);
     }
 
@@ -34,6 +43,13 @@ public class FaceStore {
      */
     public static synchronized int count() {
         return records.size();
+    }
+
+    /**
+     * 获取最大容量
+     */
+    public static int getMaxRecords() {
+        return MAX_RECORDS;
     }
 
     /**

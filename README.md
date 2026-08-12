@@ -44,7 +44,7 @@
 ```
 lowFace/
 ├── app/                         # 主应用模块
-│   └── src/main/java/com/jiaqi/face/
+│   └── src/main/java/com/low/face/
 │       ├── FaceDemoActivity.java       # 主页面
 │       ├── FaceCameraActivity.java     # 相机页面
 │       ├── FaceEngineManager.java      # 人脸核心调用

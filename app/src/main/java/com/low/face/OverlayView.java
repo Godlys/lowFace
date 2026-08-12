@@ -1,4 +1,4 @@
-package com.jiaqi.face;
+package com.low.face;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -103,11 +103,11 @@ public class OverlayView extends View {
         // 根据质量设置颜色
         int color;
         if (quality >= 0.4f) {
-            color = Color.parseColor("#00C853"); // 绿色
+            color = getResources().getColor(R.color.colorSuccess, null);
         } else if (quality >= 0.3f) {
-            color = Color.parseColor("#FFEB3B"); // 黄色
+            color = getResources().getColor(R.color.colorWarning, null);
         } else {
-            color = Color.parseColor("#FF1744"); // 红色
+            color = getResources().getColor(R.color.colorError, null);
         }
 
         paint.setColor(color);

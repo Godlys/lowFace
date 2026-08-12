@@ -1,4 +1,4 @@
-package com.jiaqi.face;
+package com.low.face;
 
 import android.content.Intent;
 import android.os.Bundle;
