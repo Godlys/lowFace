@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.gitignore'
-      - 'LICENSE'
   workflow_dispatch:  # 支持手动触发
 
 jobs:
@@ -16,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    # 只有提交信息包含 [release] 或 新版本发布 或 版本更新 才执行
+    if: |
+      contains(github.event.head_commit.message, '[release]') ||
+      contains(github.event.head_commit.message, '新版本发布') ||
+      contains(github.event.head_commit.message, '版本更新') ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
