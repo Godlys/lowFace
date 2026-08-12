@@ -66,20 +66,20 @@ jobs:
           body: |
             ## LowFace ${{ steps.version.outputs.version_name }}
 
-            ### 📥 下载
+            ### 下载
             | 文件 | 说明 |
             |------|------|
             | `LowFace-debug-v${{ steps.version.outputs.version_name }}-${{ steps.version.outputs.date }}.apk` | 调试版本（用于测试） |
 
-            ### 📋 系统要求
+            ### 系统要求
             - **最低版本**: Android 7.0 (API 24)
             - **推荐配置**: 2GB RAM, Android 10+
             - **目标设备**: 低端 Android 设备
 
-            ### 🔧 本次更新
+            ### 本次更新
             Commit: ${{ steps.version.outputs.commit }}
 
-            ### 📖 文档
+            ### 文档
             - [README (中文)](https://github.com/${{ github.repository }}/blob/main/README.md)
             - [English README](https://github.com/${{ github.repository }}/blob/main/docs/README.md)
 

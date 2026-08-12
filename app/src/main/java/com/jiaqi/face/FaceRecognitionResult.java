@@ -20,12 +20,12 @@ public class FaceRecognitionResult {
 
     public static FaceRecognitionResult matched(String userId, String userName, double score) {
         return new FaceRecognitionResult(true, userId, userName, score,
-            "✅ 匹配成功: " + userName + " (" + String.format("%.1f", score * 100) + "%)");
+            "匹配成功: " + userName + " (" + String.format("%.1f", score * 100) + "%)");
     }
 
     public static FaceRecognitionResult notMatched(double bestScore) {
         return new FaceRecognitionResult(false, null, null, bestScore,
-            "❌ 未找到匹配 (最高相似度: " + String.format("%.1f", bestScore * 100) + "%)");
+            "未找到匹配 (最高相似度: " + String.format("%.1f", bestScore * 100) + "%)");
     }
 
     public static FaceRecognitionResult failure(String message) {

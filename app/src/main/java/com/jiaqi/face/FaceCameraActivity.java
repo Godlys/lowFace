@@ -284,7 +284,7 @@ public class FaceCameraActivity extends AppCompatActivity {
                     long bitmapEndTime = System.currentTimeMillis();
                     long bitmapCost = bitmapEndTime - bitmapStartTime;
 
-                    // ★ 立即关闭 ImageProxy，释放 CameraX 缓冲区
+                    // 立即关闭 ImageProxy，释放 CameraX 缓冲区
                     long closeStartTime = System.currentTimeMillis();
                     imageProxy.close();
                     long closeTime = System.currentTimeMillis() - closeStartTime;
@@ -334,10 +334,10 @@ public class FaceCameraActivity extends AppCompatActivity {
 
                             if (quality >= FaceEngineManager.QUALITY_THRESHOLD) {
                                 tvQuality.setTextColor(android.graphics.Color.parseColor("#00C853"));
-                                tvStatus.setText("✅ 质量达标，正在处理...");
+                                tvStatus.setText("质量达标，正在处理...");
                             } else {
                                 tvQuality.setTextColor(android.graphics.Color.parseColor("#FFEB3B"));
-                                tvStatus.setText("⚠ 请调整角度");
+                                tvStatus.setText("请调整角度");
                             }
                         });
 
