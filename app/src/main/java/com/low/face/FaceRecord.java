@@ -1,4 +1,4 @@
-package com.jiaqi.face;
+package com.low.face;
 
 /**
  * 人脸记录 - 内存存储模型

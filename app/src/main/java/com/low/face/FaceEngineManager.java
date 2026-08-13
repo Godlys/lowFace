@@ -1,10 +1,10 @@
-package com.jiaqi.face;
+package com.low.face;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import com.jiaqi.face.utils.SimFaceWrapper;
+import com.low.face.utils.SimFaceWrapper;
 import com.simprints.biometrics.simface.data.FaceDetection;
 
 import java.util.ArrayList;
@@ -112,12 +112,13 @@ public class FaceEngineManager {
         checkInitialized();
         long startTime = System.currentTimeMillis();
 
+        Bitmap alignedFace = null;
         try {
             long endTime;
 
             // 对齐人脸
             long alignStartTime = System.currentTimeMillis();
-            Bitmap alignedFace = face.alignedFaceImage(sourceBitmap);
+            alignedFace = face.alignedFaceImage(sourceBitmap);
             endTime = System.currentTimeMillis();
             long alignCost = endTime - alignStartTime;
             Log.d(TAG, "[对齐] alignedFaceImage 耗时: " + alignCost + "ms");
@@ -139,6 +140,11 @@ public class FaceEngineManager {
         } catch (Exception e) {
             Log.e(TAG, "[特征提取] 失败", e);
             return null;
+        } finally {
+            // 回收对齐后的 Bitmap
+            if (alignedFace != null && alignedFace != sourceBitmap && !alignedFace.isRecycled()) {
+                alignedFace.recycle();
+            }
         }
     }
 

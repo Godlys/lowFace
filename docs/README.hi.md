@@ -45,7 +45,7 @@
 ```
 lowFace/
 ├── app/                         # मुख्य एप्लिकेशन मॉड्यूल
-│   └── src/main/java/com/jiaqi/face/
+│   └── src/main/java/com/low/face/
 │       ├── FaceDemoActivity.java       # मुख्य एक्टिविटी
 │       ├── FaceCameraActivity.java     # कैमरा एक्टिविटी
 │       ├── FaceEngineManager.java      # चेहरा मूल संचालन

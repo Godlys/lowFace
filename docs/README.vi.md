@@ -45,7 +45,7 @@ Dự án này được phát triển dựa trên [Simprints Face Biometrics SDK]
 ```
 lowFace/
 ├── app/                         # Module ứng dụng chính
-│   └── src/main/java/com/jiaqi/face/
+│   └── src/main/java/com/low/face/
 │       ├── FaceDemoActivity.java       # Activity chính
 │       ├── FaceCameraActivity.java     # Activity camera
 │       ├── FaceEngineManager.java      # Thao tác khuôn mặt cốt lõi

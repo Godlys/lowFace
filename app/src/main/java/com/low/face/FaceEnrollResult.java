@@ -1,4 +1,4 @@
-package com.jiaqi.face;
+package com.low.face;
 
 /**
  * 录入结果

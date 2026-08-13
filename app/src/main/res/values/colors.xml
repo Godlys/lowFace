@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主题色 -->
+    <color name="colorPrimary">#FF5722</color>
+    <color name="colorPrimaryDark">#E64A19</color>
+    <color name="colorAccent">#FF9800</color>
+
+    <!-- 状态颜色 -->
+    <color name="colorSuccess">#00C853</color>
+    <color name="colorWarning">#FFEB3B</color>
+    <color name="colorError">#FF1744</color>
+    <color name="colorInfo">#0066FF</color>
+
+    <!-- 文本颜色 -->
+    <color name="textPrimary">#FFFFFF</color>
+    <color name="textSecondary">#B0BEC5</color>
+
+    <!-- 背景颜色 -->
+    <color name="backgroundOverlay">#80000000</color>
+    <color name="buttonCancel">#E57373</color>
+</resources>

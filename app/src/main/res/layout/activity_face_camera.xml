@@ -12,7 +12,7 @@
         android:layout_height="match_parent" />
 
     <!-- 人脸框覆盖层 -->
-    <com.jiaqi.face.OverlayView
+    <com.low.face.OverlayView
         android:id="@+id/overlayView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

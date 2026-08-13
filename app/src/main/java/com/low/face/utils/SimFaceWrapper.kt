@@ -1,4 +1,4 @@
-package com.jiaqi.face.utils
+package com.low.face.utils
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -6,9 +6,7 @@ import android.util.Log
 import com.simprints.biometrics.simface.SimFace
 import com.simprints.biometrics.simface.SimFaceConfig
 import com.simprints.biometrics.simface.data.FaceDetection
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 
 /**
  * SimFace Java 包装类
@@ -50,12 +48,21 @@ class SimFaceWrapper(private val context: Context) {
     fun isInitialized(): Boolean = simFace != null
 
     /**
-     * 检测人脸（同步方法）
+     * 检测人脸（同步阻塞方法）
+     *
+     * 重要: 必须在后台线程调用！
+     * - FaceEngineManager 通过 ExecutorService 确保在后台线程执行
+     * - 切勿在主线程调用，否则会阻塞 UI
+     *
+     * runBlocking 用于从 Java 调用 Kotlin suspend 函数，
+     * 在后台线程中是安全的。
      */
     fun detectFaces(bitmap: Bitmap): List<FaceDetection> {
         val sf = simFace ?: throw IllegalStateException("SimFace not initialized")
 
         val startTime = System.currentTimeMillis()
+        // runBlocking 用于桥接 suspend 函数到 Java 同步调用
+        // 调用方已确保在后台线程执行，此处安全
         val result = runBlocking {
             sf.detectFaceBlocking(bitmap)
         }
