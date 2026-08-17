@@ -60,6 +60,8 @@ class SimFace {
                     .setClassificationMode(
                         FaceDetectorOptions.CLASSIFICATION_MODE_ALL,
                     ).setMinFaceSize(0.20f)
+                    // 开启人脸跟踪，用于时空锚定活体检测
+                    .enableTracking()
                     .build()
             faceDetector = MlKitFaceDetection.getClient(realTimeOpts)
             faceDetectionProcessor =

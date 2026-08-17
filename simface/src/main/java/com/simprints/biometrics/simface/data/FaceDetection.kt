@@ -13,6 +13,11 @@ data class FaceDetection(
     var roll: Float,
     val quality: Float,
     val landmarks: FacialLandmarks?,
+    // 眼睛睁开概率 (0.0 ~ 1.0)，用于静默活体检测
+    val leftEyeOpenProbability: Float?,
+    val rightEyeOpenProbability: Float?,
+    // ML Kit 人脸跟踪 ID，用于时空锚定活体检测
+    val trackingId: Int?,
 ) {
     /**
      * Crops the image according to the detections bounding box.

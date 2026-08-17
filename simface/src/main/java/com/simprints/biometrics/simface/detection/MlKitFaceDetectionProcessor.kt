@@ -45,6 +45,11 @@ internal class MlKitFaceDetectionProcessor(
                             roll = face.headEulerAngleZ,
                             landmarks = buildLandmarks(face),
                             quality = calculateFaceQuality(face, image),
+                            // 添加眼睛睁开概率，用于静默活体检测
+                            leftEyeOpenProbability = face.leftEyeOpenProbability,
+                            rightEyeOpenProbability = face.rightEyeOpenProbability,
+                            // 添加 trackingId，用于时空锚定活体检测
+                            trackingId = face.trackingId,
                         )
                     faceDetections.add(faceDetection)
                 }
@@ -75,6 +80,11 @@ internal class MlKitFaceDetectionProcessor(
                                 roll = face.headEulerAngleZ,
                                 quality = calculateFaceQuality(face, image),
                                 landmarks = buildLandmarks(face),
+                                // 添加眼睛睁开概率，用于静默活体检测
+                                leftEyeOpenProbability = face.leftEyeOpenProbability,
+                                rightEyeOpenProbability = face.rightEyeOpenProbability,
+                                // 添加 trackingId，用于时空锚定活体检测
+                                trackingId = face.trackingId,
                             )
                         faceDetections.add(faceDetection)
                     }
