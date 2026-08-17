@@ -22,6 +22,7 @@
 - 人脸识别（1:N 比对）
 - 实时人脸框显示
 - 质量分数提示
+- **静默活体检测**（防御照片/视频攻击）
 
 ## 核心参数
 
@@ -30,6 +31,7 @@
 | 质量阈值 | 0.4 | 人脸质量判断阈值 |
 | 匹配阈值 | 0.85 | 1:N 比对匹配阈值 |
 | 特征维度 | 512 | EdgeFace 输出的特征向量维度 |
+| 活体阈值 | 0.90 | Real 概率阈值，高于此值判定为活体 |
 
 ## 技术栈
 
@@ -37,6 +39,7 @@
 - **相机**: CameraX + PreviewView
 - **人脸检测**: Google ML Kit（通过 SimFace SDK）
 - **特征提取**: EdgeFace TFLite 模型
+- **活体检测**: MiniFASNetV2 TFLite 模型
 - **开发语言**: Java + Kotlin（仅 SDK 层）
 
 ## 项目结构
@@ -44,15 +47,19 @@
 ```
 lowFace/
 ├── app/                         # 主应用模块
-│   └── src/main/java/com/low/face/
-│       ├── FaceDemoActivity.java       # 主页面
-│       ├── FaceCameraActivity.java     # 相机页面
-│       ├── FaceEngineManager.java      # 人脸核心调用
-│       ├── FaceEngineSingleton.java    # 单例管理
-│       ├── FaceStore.java              # 内存存储
-│       ├── FaceRecord.java             # 数据模型
-│       ├── OverlayView.java            # 人脸框覆盖层
-│       └── utils/SimFaceWrapper.kt     # Kotlin 包装类
+│   └── src/main/
+│       ├── java/com/low/face/
+│       │   ├── FaceDemoActivity.java       # 主页面
+│       │   ├── FaceCameraActivity.java     # 相机页面
+│       │   ├── FaceEngineManager.java      # 人脸核心调用
+│       │   ├── FaceEngineSingleton.java    # 单例管理
+│       │   ├── FaceStore.java              # 内存存储
+│       │   ├── FaceRecord.java             # 数据模型
+│       │   ├── OverlayView.java            # 人脸框覆盖层
+│       │   ├── MiniVisionLivenessDetector.java  # 活体检测器
+│       │   └── utils/SimFaceWrapper.kt     # Kotlin 包装类
+│       └── assets/model/
+│           └── model_float32.tflite        # MiniFASNetV2 活体模型
 ├── simface/                     # 核心人脸识别 SDK
 └── simq/                        # 人脸质量评估库
 ```
@@ -147,6 +154,58 @@ adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
 
 节省 **400-500ms**。
 
+---
+
+## 活体检测
+
+### 概述
+
+本项目集成了 **MiniFASNetV2** 深度学习静默活体检测模型，防御照片和视频攻击。
+
+### 技术方案
+
+| 项目 | 说明 |
+|------|------|
+| 模型 | MiniFASNetV2 TFLite |
+| 输入 | 80x80 RGB 图像 |
+| 输出 | 3 类别概率 (Fake 2D, Real, Fake 3D) |
+| 阈值 | Real 概率 > 0.90 判定为活体 |
+| 耗时 | 60-150ms |
+
+### 检测流程
+
+```
+相机帧 → ML Kit 人脸检测 → 姿态角检查 → 活体检测 → 质量检查 → 特征提取
+                                    ↓
+                            Real > 0.90?
+                              ↓        ↓
+                            通过      拦截
+```
+
+### 预处理关键点
+
+1. **强制正方形裁剪**: 保持人脸比例不变形
+2. **动态缩放降级**: 防止裁剪框超出图像边界
+3. **平移防越界**: 确保裁剪区域有效
+4. **BGR 通道顺序**: 模型训练使用 OpenCV 格式
+5. **像素值 0-255**: 模型直接吞吐原始像素，不归一化
+
+### 验证结果
+
+| 攻击类型 | 测试结果 | Real 概率 |
+|---------|---------|----------|
+| 真人 | 通过 | > 0.95 |
+| 照片攻击 | 拦截 | < 0.01 |
+| 视频回放攻击 | 拦截 | < 0.01 |
+
+### 局限性
+
+- 对高分辨率屏幕播放的视频攻击可能无法完全防御
+- 对 3D 面具攻击需要额外的深度检测
+- 建议对高安全场景配合其他验证方式
+
+---
+
 ### 真机性能数据
 
 #### 冷启动（首次运行）
@@ -165,10 +224,11 @@ adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
 | 阶段 | 耗时 |
 |------|------|
 | 人脸检测 | 400-530ms |
+| 活体检测 | 60-150ms |
 | 人脸对齐 | 100-130ms |
 | 特征提取 | 90-100ms |
 | 1:N 比对(10人) | 10-15ms |
-| 自动抓取后处理 | ~230ms |
+| 自动抓取后处理 | ~300ms |
 
 ---
 
@@ -192,11 +252,11 @@ adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
 - **影响**: App 重启后需重新录入
 - **计划**: 后续版本支持持久化存储
 
-### 4. 无活体检测
+### 4. 活体检测局限
 
-- **现状**: 仅依赖照片进行识别
-- **风险**: 可能被照片欺骗
-- **计划**: 需要额外集成活体检测方案
+- **现状**: 基于单帧 2D 静默活体检测
+- **局限**: 对高质量视频攻击（如高分辨率屏幕播放）可能无法完全防御
+- **建议**: 对安全性要求高的场景，建议配合其他验证方式
 
 ### 5. 单摄像头支持
 
@@ -228,11 +288,11 @@ adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
 ## 后续优化方向
 
 1. **持久化存储**: 使用 SQLite 或 SharedPreferences 保存已录入人脸
-2. **活体检测**: 集成眨眼、张嘴等活体检测能力
-3. **相机预热**: 在主页面后台预热相机和模型
-4. **后置摄像头**: 支持前后摄像头切换
-5. **批量录入**: 支持一次录入多人
-6. **NPU 加速**: 如果设备支持，利用 NPU 加速推理
+2. **相机预热**: 在主页面后台预热相机和模型
+3. **后置摄像头**: 支持前后摄像头切换
+4. **批量录入**: 支持一次录入多人
+5. **NPU 加速**: 如果设备支持，利用 NPU 加速推理
+6. **深度活体**: 集成 3D 深度活体检测（需硬件支持）
 
 ---
 
