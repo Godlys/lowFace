@@ -296,6 +296,18 @@ adb logcat -s FaceDemo:* FaceEngine:* FaceCamera:*
 
 ---
 
+
+### 架构升级：插件化与核心解耦 (Face-Core Engine)
+
+为了应对未来在更多低端工控设备（如闸机、考勤机）上的无缝移植，项目已从“单体应用”重构为“**核心计算层 (face-core) + 业务演示层 (app)**”的解耦架构。
+
+* **`face-core` 独立引擎**：纯净的算法黑盒。内部封装了 ML Kit (人脸捕捉)、MiniVision (防伪活体) 和 SimFace (特征提取) 的所有张量运算。
+* **内存级特征检索引擎**：内置基于 `ConcurrentHashMap` 的毫秒级特征索引库。
+* **极致算力优化**：特征入库前强制 L2 归一化，1:N 海量比对全面降级为“点积 (Dot Product)”运算，在 MT6762 等低端 Cortex-A53 芯片上实现无感极速检索。
+
+
+* **宿主无感接入**：业务端 (App) 彻底剥离了复杂的 TFLite 依赖和生命周期管理，通过标准化的接口 (`FaceVisionManager`、`FaceMatchManager`) 实现插拔式接入。业务层只需专注于 CameraX 数据流喂入和 SQLite/Room 数据库的持久化同步。
+
 ## 许可证
 
 本项目核心 SDK (`simface`, `simq`) 遵循原项目许可证。
