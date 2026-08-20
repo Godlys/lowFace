@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+    <defs>
+        <!-- Styles & Filters -->
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.1"/>
+        </filter>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="hostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#EBF4FF" />
+            <stop offset="100%" stop-color="#D1E8FF" />
+        </linearGradient>
+        <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F3E8FF" />
+            <stop offset="100%" stop-color="#E9D5FF" />
+        </linearGradient>
+        <linearGradient id="managerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#F8FAFC" />
+        </linearGradient>
+
+        <style>
+            .text-title { font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #1E293B; }
+            .text-sub { font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; font-size: 16px; fill: #475569; }
+            .text-body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; fill: #334155; }
+            .text-small { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 12px; fill: #64748B; }
+            .text-code { font-family: 'Fira Code', 'Courier New', monospace; font-size: 13px; fill: #0F172A; font-weight:600;}
+
+            .box-host { fill: url(#hostGrad); stroke: #93C5FD; stroke-width: 2; rx: 12; }
+            .box-core { fill: url(#coreGrad); stroke: #C084FC; stroke-width: 2; rx: 12; }
+            .box-component { fill: url(#managerGrad); stroke: #CBD5E1; stroke-width: 1.5; rx: 8; filter: url(#shadow); }
+            .box-pojo { fill: #FEF3C7; stroke: #FCD34D; stroke-width: 1.5; rx: 6; }
+            .box-facade { fill: #10B981; rx: 8; filter: url(#shadow); }
+
+            .line-solid { fill: none; stroke: #94A3B8; stroke-width: 2; marker-end: url(#arrowhead); }
+            .line-dashed { fill: none; stroke: #94A3B8; stroke-width: 2; stroke-dasharray: 6,4; marker-end: url(#arrowhead); }
+            .line-data { fill: none; stroke: #F59E0B; stroke-width: 2; stroke-dasharray: 4,4; marker-end: url(#arrowhead-data); }
+        </style>
+
+        <!-- Arrowheads -->
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#94A3B8" />
+        </marker>
+        <marker id="arrowhead-data" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#F59E0B" />
+        </marker>
+    </defs>
+
+    <!-- Background -->
+    <rect width="1000" height="800" fill="#F8FAFC" />
+
+    <!-- TITLE -->
+    <text x="500" y="40" text-anchor="middle" class="text-title" font-size="28">Q3 Architecture: Zero-Trust Face SDK Integration</text>
+
+    <!-- ================= HOST APP MODULE ================= -->
+    <rect x="40" y="80" width="300" height="660" class="box-host" />
+    <text x="190" y="115" text-anchor="middle" class="text-title">Host App (Demo Module)</text>
+    <text x="190" y="135" text-anchor="middle" class="text-small">com.low.face.app</text>
+
+    <!-- Host Components -->
+    <rect x="70" y="170" width="240" height="80" class="box-component" />
+    <text x="190" y="195" text-anchor="middle" class="text-sub">CameraX Pipeline</text>
+    <text x="190" y="215" text-anchor="middle" class="text-body">Frames, Rotation, ImageProxy</text>
+    <text x="190" y="235" text-anchor="middle" class="text-small">Produces: Bitmap</text>
+
+    <rect x="70" y="280" width="240" height="80" class="box-component" />
+    <text x="190" y="305" text-anchor="middle" class="text-sub">Business UI / Activity</text>
+    <text x="190" y="325" text-anchor="middle" class="text-body">Draw Boxes, Toast Messages</text>
+    <text x="190" y="345" text-anchor="middle" class="text-small">Handles: VisionResult &amp; MatchResult</text>
+
+    <rect x="70" y="390" width="240" height="100" class="box-component" />
+    <text x="190" y="415" text-anchor="middle" class="text-sub">Persistent Storage (Room/SQLite)</text>
+    <text x="190" y="440" text-anchor="middle" class="text-body">Stores: Employees, bizId, Features</text>
+    <text x="190" y="465" text-anchor="middle" class="text-small">Pushes data to SDK on boot</text>
+
+    <!-- ================= SDK BOUNDARY (POJOs) ================= -->
+    <text x="380" y="100" class="text-sub" fill="#64748B">Cross-Boundary DTOs (Zero-Trust)</text>
+
+    <rect x="360" y="120" width="130" height="40" class="box-pojo" />
+    <text x="425" y="145" text-anchor="middle" class="text-code">VisionResult</text>
+
+    <rect x="360" y="360" width="130" height="40" class="box-pojo" />
+    <text x="425" y="385" text-anchor="middle" class="text-code">MatchResult</text>
+
+    <rect x="360" y="480" width="130" height="40" class="box-pojo" />
+    <text x="425" y="505" text-anchor="middle" class="text-code">List&lt;FaceRecord&gt;</text>
+
+
+    <!-- ================= FACE CORE SDK MODULE ================= -->
+    <rect x="510" y="80" width="450" height="660" class="box-core" />
+    <text x="735" y="115" text-anchor="middle" class="text-title">Face Core SDK (Library Module)</text>
+    <text x="735" y="135" text-anchor="middle" class="text-small">com.low.face.core</text>
+
+    <!-- Facade -->
+    <rect x="540" y="170" width="390" height="50" class="box-facade" />
+    <text x="735" y="200" text-anchor="middle" class="text-code" fill="#FFFFFF" font-size="16">FaceCoreClient (Facade Singleton)</text>
+
+    <!-- Managers inside Core -->
+    <rect x="540" y="250" width="390" height="180" class="box-component" />
+    <text x="560" y="280" class="text-sub">1. FaceVisionManager (Defensive Pipeline)</text>
+    <line x1="560" y1="290" x2="910" y2="290" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="560" y="315" class="text-small">• Input Defense: Null, Size, Ratio Checks</text>
+    <text x="560" y="335" class="text-small">• ML Kit Detector (Sync await)</text>
+    <text x="560" y="355" class="text-small">• Pose Filter (Yaw/Roll)</text>
+    <text x="560" y="375" class="text-small">• MiniVision Liveness (TFLite)</text>
+    <text x="560" y="395" class="text-small">• SimFace Extractor (TFLite) -> L2 Normalization</text>
+    <rect x="830" y="350" width="80" height="60" fill="#E2E8F0" rx="4"/>
+    <text x="870" y="370" text-anchor="middle" class="text-small">.tflite</text>
+    <text x="870" y="390" text-anchor="middle" class="text-small">Assets</text>
+
+    <rect x="540" y="450" width="390" height="120" class="box-component" />
+    <text x="560" y="480" class="text-sub">2. FaceMatchManager (Compute Engine)</text>
+    <line x1="560" y1="490" x2="910" y2="490" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="560" y="515" class="text-small">• Method: search1vN(targetFeature, threshold)</text>
+    <text x="560" y="535" class="text-small">• Algorithm: Dot Product (L2 Norm assumed)</text>
+    <text x="560" y="555" class="text-small">• Security: Model Tag Verification</text>
+
+    <rect x="540" y="590" width="390" height="120" class="box-component" />
+    <text x="560" y="620" class="text-sub">3. FaceDatabaseManager (In-Memory Index)</text>
+    <line x1="560" y1="630" x2="910" y2="630" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="560" y="655" class="text-small">• Store: ConcurrentHashMap&lt;String, FaceRecord&gt;</text>
+    <text x="560" y="675" class="text-small">• Key: internal faceId</text>
+    <text x="560" y="695" class="text-small">• Methods: syncAll(), add(), remove()</text>
+
+
+    <!-- ================= ARROWS & FLOWS ================= -->
+
+    <!-- Flow: Image to Core -->
+    <path d="M 310 210 L 530 195" class="line-solid" />
+    <text x="360" y="195" class="text-small">processFrame(Bitmap)</text>
+
+    <!-- Flow: Vision Result back -->
+    <path d="M 540 280 C 480 280, 480 140, 425 140" class="line-data" />
+    <path d="M 360 140 C 310 140, 310 320, 250 320" class="line-data" />
+
+    <!-- Flow: Match Result back -->
+    <path d="M 540 510 L 425 380" class="line-data" />
+    <path d="M 360 380 L 310 340" class="line-data" />
+
+    <!-- Flow: DB Sync -->
+    <path d="M 310 440 L 360 500" class="line-solid" />
+    <path d="M 490 500 L 540 650" class="line-solid" />
+    <text x="440" y="475" class="text-small" transform="rotate(50 440 475)">syncAll()</text>
+
+    <!-- Internal Core Routing -->
+    <path d="M 735 220 L 735 250" class="line-dashed" />
+    <path d="M 735 430 L 735 450" class="line-dashed" />
+    <path d="M 735 570 L 735 590" class="line-dashed" />
+
+    <!-- Match to DB relation -->
+    <path d="M 600 570 L 600 590" class="line-dashed" />
+    <text x="610" y="585" class="text-small">Reads Index</text>
+</svg>
